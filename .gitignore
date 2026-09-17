@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Secrets
+.env
+
+# Spotify OAuth token cache
+.spotify_token_cache
+
+# Runtime data (user-specific playlist input/state, regenerated per run)
+ytmusic_paste.txt
+processed_tracks.json
+suspicious_tracks.txt
+
+# Editors
+.vscode/
+.idea/
+.DS_Store

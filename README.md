@@ -14,14 +14,14 @@ only talks to these shared types, not to each other's internals.
 
 ```mermaid
 flowchart LR
-    A[ytmusic_paste.txt] --> B[parser.ytmusic_parser]
-    B -->|SourceTrack list| C[cli.run_migration]
+    A[ytmusic_paste.txt] --> B[ytmusic_parser]
+    B -->|SourceTrack list| C[run_migration]
     C -->|build_candidates| D[SearchCandidate list]
-    D --> E[spotify_client.SpotifyClient.search_track]
-    E -->|Spotify track| F[matcher.track_matcher]
+    D --> E[search_track]
+    E -->|Spotify track| F[track_matcher]
     F -->|MatchResult| C
     C -->|add_to_liked_songs| E
-    C -->|mark_processed| G[state.CheckpointStore]
+    C -->|mark_processed| G[CheckpointStore]
     G <-->|processed_tracks.json| H[(disk)]
     C -->|suspicious tracks| I[suspicious_tracks.txt]
     C --> J[MigrationSummary]

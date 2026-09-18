@@ -12,21 +12,6 @@ The domain model is deliberately kept platform-agnostic (`src/models.py`):
 know anything about YouTube Music or Spotify specifically. Every other module
 only talks to these shared types, not to each other's internals.
 
-```mermaid
-flowchart LR
-    A[ytmusic_paste.txt] --> B[ytmusic_parser]
-    B -->|SourceTrack list| C[run_migration]
-    C -->|build_candidates| D[SearchCandidate list]
-    D --> E[search_track]
-    E -->|Spotify track| F[track_matcher]
-    F -->|MatchResult| C
-    C -->|add_to_liked_songs| E
-    C -->|mark_processed| G[CheckpointStore]
-    G <-->|processed_tracks.json| H[(disk)]
-    C -->|suspicious tracks| I[suspicious_tracks.txt]
-    C --> J[MigrationSummary]
-```
-
 - **`parser/ytmusic_parser.py`** turns the raw page dump into `SourceTrack`
   entries and builds an ordered list of `SearchCandidate` guesses per entry.
 - **`spotify_client/client.py`** wraps `spotipy`: OAuth setup, rate-limit

@@ -21,7 +21,7 @@ class SourceTrack:
 
     def key(self) -> str:
         """Return a stable, case-insensitive identity key used for checkpointing."""
-        ...
+        return f"{self.artist.lower()}::{self.title.lower()}"
 
 
 @dataclass
@@ -57,4 +57,6 @@ class MigrationSummary:
     @property
     def average_match_score(self) -> float:
         """Mean fuzzy match score across all successful matches (0.0 if there were none)."""
-        ...
+        if not self.match_scores:
+            return 0.0
+        return sum(self.match_scores) / len(self.match_scores)

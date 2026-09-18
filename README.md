@@ -152,14 +152,15 @@ pytest -v
 
 ## Future Work
 
-None of the following exist yet:
+The platform-agnostic model design leaves room to grow in a few directions:
 
-- **A real YouTube Music API integration.** The parser works on a manually
-  copy-pasted text dump because there's no official YouTube Music API for
-  playlist export; an unofficial API client (e.g. `ytmusicapi`) could remove
-  the copy-paste step entirely.
-- **Reverse migration (Spotify → YouTube Music).** The shared model types
-  were designed to make this feasible, but no YouTube Music *write* client
-  has been built.
-- **Other platforms.** Apple Music, Tidal, and others aren't supported as
-  either a source or a target.
+* **A real YouTube Music API integration.** The parser currently works on
+  a manually copy-pasted text dump, since there's no official YouTube
+  Music API for playlist export. Swapping in an unofficial client (e.g.
+  `ytmusicapi`) would remove the copy-paste step entirely.
+* **Reverse migration (Spotify → YouTube Music).** The shared model types
+  were designed with this in mind — it would mainly require a YouTube
+  Music *write* client alongside the existing Spotify one.
+* **Other platforms.** Apple Music, Tidal, and others could be added as
+  either a source or a target without touching the core matching or
+  checkpointing logic.

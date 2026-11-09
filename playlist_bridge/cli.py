@@ -1,18 +1,20 @@
 """Command-line entry point for PlaylistBridge.
 
-Wires together the parser, matcher, Spotify client, and checkpoint store to migrate a
-YouTube Music page dump into Spotify Liked Songs, and prints an end-of-run summary.
+Wires together the source (a public playlist URL or a YouTube Music page dump), matcher,
+Spotify client, and checkpoint store to migrate tracks into Spotify Liked Songs, and prints
+an end-of-run summary.
 """
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
-from src.matcher.track_matcher import build_match_result
-from src.models import MigrationSummary
-from src.parser.ytmusic_parser import build_candidates, parse_ytmusic_page
-from src.spotify_client.client import SpotifyClient
-from src.state.checkpoint import CheckpointStore
+from playlist_bridge.matcher.track_matcher import build_match_result
+from playlist_bridge.models import MigrationSummary
+from playlist_bridge.parser.ytmusic_parser import build_candidates, parse_ytmusic_page
+from playlist_bridge.parser.ytmusic_playlist import fetch_playlist_tracks
+from playlist_bridge.spotify_client.client import SpotifyClient
+from playlist_bridge.state.checkpoint import CheckpointStore
 
 DEFAULT_INPUT_PATH = Path("ytmusic_paste.txt")
 DEFAULT_STATE_PATH = Path("processed_tracks.json")
@@ -26,9 +28,15 @@ SUSPICIOUS_DURATION_THRESHOLD_SECONDS = 600
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build the CLI argument parser, including --input and --dry-run."""
     parser = argparse.ArgumentParser(
-        description="Migrate a YouTube Music page dump into Spotify Liked Songs."
+        description="Migrate a YouTube Music playlist into Spotify Liked Songs."
     )
-    parser.add_argument(
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument(
+        "--playlist",
+        metavar="URL_OR_ID",
+        help="Public YouTube Music / YouTube playlist URL or id (no YouTube login needed).",
+    )
+    source.add_argument(
         "--input",
         type=Path,
         default=DEFAULT_INPUT_PATH,
@@ -45,7 +53,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run_migration(input_path: Path, dry_run: bool) -> MigrationSummary:
+def run_migration(
+    input_path: Path, dry_run: bool, playlist: str | None = None
+) -> MigrationSummary:
     """Run the full YouTube Music -> Spotify migration and return a summary of the results.
 
     In --dry-run mode, only the input is parsed: no Spotify client or checkpoint store
@@ -53,7 +63,10 @@ def run_migration(input_path: Path, dry_run: bool) -> MigrationSummary:
     or written to checkpoint state. Instead, the searches that would have been tried
     for each entry are printed.
     """
-    entries = parse_ytmusic_page(input_path.read_text(encoding="utf-8"))
+    if playlist:
+        entries = fetch_playlist_tracks(playlist)
+    else:
+        entries = parse_ytmusic_page(input_path.read_text(encoding="utf-8"))
 
     client: SpotifyClient | None = None
     checkpoint: CheckpointStore | None = None
@@ -71,7 +84,7 @@ def run_migration(input_path: Path, dry_run: bool) -> MigrationSummary:
                 f"{entry.artist} - {entry.title} ({entry.duration_seconds}s)"
             )
 
-        if not dry_run and checkpoint.is_processed(entry.key()):
+        if checkpoint is not None and checkpoint.is_processed(entry.key()):
             summary.skipped_already_processed += 1
             continue
 
@@ -86,11 +99,12 @@ def run_migration(input_path: Path, dry_run: bool) -> MigrationSummary:
                 print(f"Would search for: {label}")
                 continue
 
+            assert client is not None
             found_track = client.search_track(candidate.artist, candidate.title)
             if found_track:
                 break
 
-        if dry_run:
+        if client is None or checkpoint is None:  # dry run
             continue
 
         if found_track is None:
@@ -106,7 +120,7 @@ def run_migration(input_path: Path, dry_run: bool) -> MigrationSummary:
         if match_result.is_suspicious:
             summary.suspicious_match_count += 1
 
-    if not dry_run:
+    if checkpoint is not None:
         checkpoint.flush()
 
     # Overwritten (not appended) on every run: a track that's no longer suspicious,
@@ -135,7 +149,10 @@ def main() -> None:
     """CLI entry point: parse arguments and run the migration."""
     parser = build_arg_parser()
     args = parser.parse_args()
-    summary = run_migration(args.input, args.dry_run)
+    try:
+        summary = run_migration(args.input, args.dry_run, playlist=args.playlist)
+    except (ValueError, RuntimeError, FileNotFoundError) as exc:
+        parser.exit(2, f"playlist-bridge: error: {exc}\n")
     print_summary(summary)
 
 

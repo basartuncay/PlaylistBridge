@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from spotipy.exceptions import SpotifyException
 
-from src.spotify_client.client import SpotifyClient
+from playlist_bridge.spotify_client.client import SpotifyClient
 
 
 def _make_client() -> SpotifyClient:
@@ -20,7 +20,7 @@ def test_call_with_backoff_retries_after_429_using_retry_after_header():
     rate_limited = SpotifyException(429, -1, "rate limited", headers={"Retry-After": "2"})
     fn = MagicMock(side_effect=[rate_limited, "ok"])
 
-    with patch("src.spotify_client.client.time.sleep") as mock_sleep:
+    with patch("playlist_bridge.spotify_client.client.time.sleep") as mock_sleep:
         result = client.call_with_backoff(fn)
 
     assert result == "ok"
@@ -33,7 +33,7 @@ def test_call_with_backoff_uses_default_delay_when_retry_after_missing():
     rate_limited = SpotifyException(429, -1, "rate limited")
     fn = MagicMock(side_effect=[rate_limited, "ok"])
 
-    with patch("src.spotify_client.client.time.sleep") as mock_sleep:
+    with patch("playlist_bridge.spotify_client.client.time.sleep") as mock_sleep:
         result = client.call_with_backoff(fn)
 
     assert result == "ok"
@@ -45,9 +45,11 @@ def test_call_with_backoff_raises_non_429_errors_immediately():
     server_error = SpotifyException(500, -1, "server error")
     fn = MagicMock(side_effect=server_error)
 
-    with patch("src.spotify_client.client.time.sleep") as mock_sleep:
-        with pytest.raises(SpotifyException):
-            client.call_with_backoff(fn)
+    with (
+        patch("playlist_bridge.spotify_client.client.time.sleep") as mock_sleep,
+        pytest.raises(SpotifyException),
+    ):
+        client.call_with_backoff(fn)
 
     assert fn.call_count == 1
     mock_sleep.assert_not_called()
@@ -91,7 +93,7 @@ def test_add_to_liked_songs_calls_spotipy_with_track_id_list():
 
 
 def test_from_env_raises_when_required_env_var_is_missing(monkeypatch):
-    monkeypatch.setattr("src.spotify_client.client.load_dotenv", MagicMock())
+    monkeypatch.setattr("playlist_bridge.spotify_client.client.load_dotenv", MagicMock())
     monkeypatch.delenv("SPOTIPY_CLIENT_ID", raising=False)
     monkeypatch.delenv("SPOTIPY_CLIENT_SECRET", raising=False)
     monkeypatch.delenv("SPOTIPY_REDIRECT_URI", raising=False)
@@ -103,7 +105,7 @@ def test_from_env_raises_when_required_env_var_is_missing(monkeypatch):
 
 
 def test_from_env_lists_every_missing_variable(monkeypatch):
-    monkeypatch.setattr("src.spotify_client.client.load_dotenv", MagicMock())
+    monkeypatch.setattr("playlist_bridge.spotify_client.client.load_dotenv", MagicMock())
     monkeypatch.delenv("SPOTIPY_CLIENT_ID", raising=False)
     monkeypatch.delenv("SPOTIPY_CLIENT_SECRET", raising=False)
     monkeypatch.delenv("SPOTIPY_REDIRECT_URI", raising=False)

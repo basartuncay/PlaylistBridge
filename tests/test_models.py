@@ -1,4 +1,4 @@
-from src.models import MigrationSummary, SourceTrack
+from playlist_bridge.models import MigrationSummary, SourceTrack
 
 
 def test_key_is_lowercase_artist_title():

@@ -1,9 +1,9 @@
-from src.matcher.track_matcher import (
+from playlist_bridge.matcher.track_matcher import (
     SUSPICIOUS_SCORE_THRESHOLD,
     build_match_result,
     score_match,
 )
-from src.models import SourceTrack
+from playlist_bridge.models import SourceTrack
 
 
 def test_score_match_high_for_identical_title_and_artist():

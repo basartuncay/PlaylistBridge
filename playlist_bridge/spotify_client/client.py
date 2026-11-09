@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, TypeVar
 
 import spotipy
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from spotipy.exceptions import SpotifyException
 from spotipy.oauth2 import SpotifyOAuth
 
@@ -47,11 +48,12 @@ class SpotifyClient:
         self.sp = spotipy.Spotify(auth_manager=auth_manager)
 
     @classmethod
-    def from_env(cls) -> "SpotifyClient":
+    def from_env(cls) -> SpotifyClient:
         """Build a client from SPOTIPY_CLIENT_ID / SPOTIPY_CLIENT_SECRET /
         SPOTIPY_REDIRECT_URI environment variables (typically loaded from a .env file).
         """
-        load_dotenv()
+        # usecwd: once installed (pipx), the default search starts in site-packages, not here.
+        load_dotenv(find_dotenv(usecwd=True))
 
         values = {name: os.environ.get(name) for name in _REQUIRED_ENV_VARS}
         missing = [name for name, value in values.items() if not value]
@@ -61,11 +63,8 @@ class SpotifyClient:
                 f"{', '.join(missing)}. Set them directly or in a .env file."
             )
 
-        return cls(
-            client_id=values["SPOTIPY_CLIENT_ID"],
-            client_secret=values["SPOTIPY_CLIENT_SECRET"],
-            redirect_uri=values["SPOTIPY_REDIRECT_URI"],
-        )
+        client_id, client_secret, redirect_uri = (str(values[n]) for n in _REQUIRED_ENV_VARS)
+        return cls(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri)
 
     def call_with_backoff(self, fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
         """Call a spotipy function, automatically sleeping and retrying if it raises an
@@ -80,7 +79,7 @@ class SpotifyClient:
                 retry_after = int(e.headers.get("Retry-After", DEFAULT_RETRY_AFTER_SECONDS))
                 time.sleep(retry_after)
 
-    def search_track(self, artist: str, title: str) -> Optional[dict[str, Any]]:
+    def search_track(self, artist: str, title: str) -> dict[str, Any] | None:
         """Search Spotify for a track by artist and title, returning the top result
         (or None if nothing was found).
         """

@@ -1,6 +1,6 @@
 import json
 
-from src.state.checkpoint import CheckpointStore
+from playlist_bridge.state.checkpoint import CheckpointStore
 
 
 def test_is_processed_false_for_unknown_key(tmp_path):

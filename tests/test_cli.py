@@ -1,6 +1,7 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from src.cli import run_migration
+from playlist_bridge.cli import run_migration
+from playlist_bridge.models import SourceTrack
 
 
 def _page(title: str, artist: str, duration: str) -> str:
@@ -12,10 +13,10 @@ def _spotify_track(track_id: str, name: str, artist: str) -> dict:
     return {"id": track_id, "name": name, "artists": [{"name": artist}]}
 
 
-@patch("src.cli.CheckpointStore")
-@patch("src.cli.SpotifyClient")
+@patch("playlist_bridge.cli.CheckpointStore")
+@patch("playlist_bridge.cli.SpotifyClient")
 def test_run_migration_adds_matched_track(mock_spotify_client_cls, mock_checkpoint_cls, tmp_path, monkeypatch):
-    monkeypatch.setattr("src.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
+    monkeypatch.setattr("playlist_bridge.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
     input_path = tmp_path / "input.txt"
     input_path.write_text(_page("Imagine", "John Lennon", "3:04"))
 
@@ -38,12 +39,12 @@ def test_run_migration_adds_matched_track(mock_spotify_client_cls, mock_checkpoi
     mock_checkpoint.flush.assert_called_once()
 
 
-@patch("src.cli.CheckpointStore")
-@patch("src.cli.SpotifyClient")
+@patch("playlist_bridge.cli.CheckpointStore")
+@patch("playlist_bridge.cli.SpotifyClient")
 def test_run_migration_dry_run_never_touches_spotify_or_checkpoint(
     mock_spotify_client_cls, mock_checkpoint_cls, tmp_path, monkeypatch
 ):
-    monkeypatch.setattr("src.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
+    monkeypatch.setattr("playlist_bridge.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
     input_path = tmp_path / "input.txt"
     input_path.write_text(_page("Imagine", "John Lennon", "3:04"))
 
@@ -56,10 +57,10 @@ def test_run_migration_dry_run_never_touches_spotify_or_checkpoint(
     assert summary.skipped_already_processed == 0
 
 
-@patch("src.cli.CheckpointStore")
-@patch("src.cli.SpotifyClient")
+@patch("playlist_bridge.cli.CheckpointStore")
+@patch("playlist_bridge.cli.SpotifyClient")
 def test_run_migration_skips_already_processed_track(mock_spotify_client_cls, mock_checkpoint_cls, tmp_path, monkeypatch):
-    monkeypatch.setattr("src.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
+    monkeypatch.setattr("playlist_bridge.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
     input_path = tmp_path / "input.txt"
     input_path.write_text(_page("Imagine", "John Lennon", "3:04"))
 
@@ -76,12 +77,12 @@ def test_run_migration_skips_already_processed_track(mock_spotify_client_cls, mo
     mock_checkpoint.mark_processed.assert_not_called()
 
 
-@patch("src.cli.CheckpointStore")
-@patch("src.cli.SpotifyClient")
+@patch("playlist_bridge.cli.CheckpointStore")
+@patch("playlist_bridge.cli.SpotifyClient")
 def test_run_migration_counts_not_found_when_no_candidate_matches(
     mock_spotify_client_cls, mock_checkpoint_cls, tmp_path, monkeypatch
 ):
-    monkeypatch.setattr("src.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
+    monkeypatch.setattr("playlist_bridge.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
     input_path = tmp_path / "input.txt"
     input_path.write_text(_page("Imagine", "John Lennon", "3:04"))
 
@@ -99,11 +100,11 @@ def test_run_migration_counts_not_found_when_no_candidate_matches(
     mock_checkpoint.mark_processed.assert_not_called()
 
 
-@patch("src.cli.CheckpointStore")
-@patch("src.cli.SpotifyClient")
+@patch("playlist_bridge.cli.CheckpointStore")
+@patch("playlist_bridge.cli.SpotifyClient")
 def test_run_migration_flags_suspicious_duration(mock_spotify_client_cls, mock_checkpoint_cls, tmp_path, monkeypatch):
     suspicious_log_path = tmp_path / "suspicious.txt"
-    monkeypatch.setattr("src.cli.DEFAULT_SUSPICIOUS_LOG_PATH", suspicious_log_path)
+    monkeypatch.setattr("playlist_bridge.cli.DEFAULT_SUSPICIOUS_LOG_PATH", suspicious_log_path)
     input_path = tmp_path / "input.txt"
     # 11:45 = 705 seconds, above the 600s threshold.
     input_path.write_text(_page("Full Album Mix", "Some Channel", "11:45"))
@@ -121,13 +122,13 @@ def test_run_migration_flags_suspicious_duration(mock_spotify_client_cls, mock_c
     assert "705s" in suspicious_log_path.read_text()
 
 
-@patch("src.cli.CheckpointStore")
-@patch("src.cli.SpotifyClient")
+@patch("playlist_bridge.cli.CheckpointStore")
+@patch("playlist_bridge.cli.SpotifyClient")
 def test_run_migration_overwrites_suspicious_log_instead_of_appending(
     mock_spotify_client_cls, mock_checkpoint_cls, tmp_path, monkeypatch
 ):
     suspicious_log_path = tmp_path / "suspicious.txt"
-    monkeypatch.setattr("src.cli.DEFAULT_SUSPICIOUS_LOG_PATH", suspicious_log_path)
+    monkeypatch.setattr("playlist_bridge.cli.DEFAULT_SUSPICIOUS_LOG_PATH", suspicious_log_path)
     input_path = tmp_path / "input.txt"
     # 11:45 = 705 seconds, above the 600s threshold.
     input_path.write_text(_page("Full Album Mix", "Some Channel", "11:45"))
@@ -145,12 +146,12 @@ def test_run_migration_overwrites_suspicious_log_instead_of_appending(
     assert contents.count("705s") == 1
 
 
-@patch("src.cli.CheckpointStore")
-@patch("src.cli.SpotifyClient")
+@patch("playlist_bridge.cli.CheckpointStore")
+@patch("playlist_bridge.cli.SpotifyClient")
 def test_run_migration_flags_suspicious_match_for_low_score(
     mock_spotify_client_cls, mock_checkpoint_cls, tmp_path, monkeypatch
 ):
-    monkeypatch.setattr("src.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
+    monkeypatch.setattr("playlist_bridge.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
     input_path = tmp_path / "input.txt"
     input_path.write_text(_page("Bohemian Rhapsody", "Queen", "5:55"))
 
@@ -167,3 +168,22 @@ def test_run_migration_flags_suspicious_match_for_low_score(
     assert summary.added == 1
     assert summary.suspicious_match_count == 1
     assert summary.match_scores[0] < 60.0
+
+
+@patch("playlist_bridge.cli.CheckpointStore")
+@patch("playlist_bridge.cli.SpotifyClient")
+@patch("playlist_bridge.cli.fetch_playlist_tracks")
+def test_run_migration_reads_playlist_url_instead_of_input_file(
+    mock_fetch, mock_spotify_client_cls, mock_checkpoint_cls, tmp_path, monkeypatch
+):
+    monkeypatch.setattr("playlist_bridge.cli.DEFAULT_SUSPICIOUS_LOG_PATH", tmp_path / "suspicious.txt")
+    mock_fetch.return_value = [SourceTrack(title="Imagine", artist="John Lennon", duration_seconds=184)]
+    client = mock_spotify_client_cls.from_env.return_value
+    client.search_track.return_value = _spotify_track("t1", "Imagine", "John Lennon")
+    mock_checkpoint_cls.return_value.is_processed.return_value = False
+
+    summary = run_migration(tmp_path / "missing.txt", dry_run=False, playlist="PLabc")
+
+    mock_fetch.assert_called_once_with("PLabc")
+    client.add_to_liked_songs.assert_called_once_with("t1")
+    assert summary.added == 1

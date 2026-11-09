@@ -1,5 +1,5 @@
-from src.models import SourceTrack
-from src.parser.ytmusic_parser import (
+from playlist_bridge.models import SourceTrack
+from playlist_bridge.parser.ytmusic_parser import (
     build_candidates,
     clean_title,
     duration_to_seconds,

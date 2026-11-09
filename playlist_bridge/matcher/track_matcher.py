@@ -10,7 +10,7 @@ from typing import Any
 
 from rapidfuzz import fuzz
 
-from src.models import MatchResult, SourceTrack
+from playlist_bridge.models import MatchResult, SourceTrack
 
 SUSPICIOUS_SCORE_THRESHOLD = 60.0
 

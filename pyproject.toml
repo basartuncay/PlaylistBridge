@@ -1,28 +1,52 @@
 [project]
 name = "playlist-bridge"
-version = "0.1.0"
-description = "Migrate playlists between music platforms (currently YouTube Music -> Spotify)."
+version = "0.2.0"
+description = "Migrate YouTube Music playlists into Spotify Liked Songs, with fuzzy matching and resumable runs."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Basar Tuncay" }]
 requires-python = ">=3.10"
+keywords = ["spotify", "youtube-music", "playlist", "migration", "cli"]
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio",
+]
 dependencies = [
     "spotipy>=2.23",
     "rapidfuzz>=3.0",
     "python-dotenv>=1.0",
+    "ytmusicapi>=1.8",
 ]
+
+[project.urls]
+Homepage = "https://github.com/basartuncay/PlaylistBridge"
+Issues = "https://github.com/basartuncay/PlaylistBridge/issues"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "build>=1.2",
 ]
 
 [project.scripts]
-playlist-bridge = "src.cli:main"
+playlist-bridge = "playlist_bridge.cli:main"
 
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["src*"]
+include = ["playlist_bridge*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+ignore_missing_imports = true

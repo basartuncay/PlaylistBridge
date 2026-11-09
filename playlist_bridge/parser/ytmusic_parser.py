@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from src.models import SearchCandidate, SourceTrack
+from playlist_bridge.models import SearchCandidate, SourceTrack
 
 # A track entry spans several lines (title, artist/channel, ...) followed by a
 # standalone "MM:SS" or "H:MM:SS" duration line, which marks the end of the entry.

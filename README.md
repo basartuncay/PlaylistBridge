@@ -1,7 +1,9 @@
 # PlaylistBridge
 
-A migration tool that parses a raw text dump of a YouTube Music playlist or
-library page and adds the matching tracks to Spotify Liked Songs. Built with an
+[![CI](https://github.com/basartuncay/PlaylistBridge/actions/workflows/ci.yml/badge.svg)](https://github.com/basartuncay/PlaylistBridge/actions/workflows/ci.yml)
+
+A command-line tool that reads a YouTube Music playlist — straight from its public
+URL, or from a copy-pasted page dump — and adds the matching tracks to Spotify Liked Songs. Built with an
 extensible architecture so that other source/target platform pairs can be
 added later without touching the core matching or checkpointing logic.
 
@@ -12,6 +14,8 @@ The domain model is deliberately kept platform-agnostic (`src/models.py`):
 know anything about YouTube Music or Spotify specifically. Every other module
 only talks to these shared types, not to each other's internals.
 
+- **`parser/ytmusic_playlist.py`** reads a public playlist by URL via
+  `ytmusicapi` (no login) and produces the same `SourceTrack` entries.
 - **`parser/ytmusic_parser.py`** turns the raw page dump into `SourceTrack`
   entries and builds an ordered list of `SearchCandidate` guesses per entry.
 - **`spotify_client/client.py`** wraps `spotipy`: OAuth setup, rate-limit
@@ -56,7 +60,7 @@ before committing to a real run.
 
 ## Testing & Lessons Learned
 
-54/54 tests pass (`pytest -v`). Two real bugs were caught during development
+65/65 tests pass (`pytest -v`). Two real bugs were caught during development
 and are worth calling out because they weren't obvious from the code alone:
 
 1. **Empty `source.artist` silently tanked otherwise-perfect matches.**
@@ -84,10 +88,10 @@ and are worth calling out because they weren't obvious from the code alone:
 ### Install
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+pipx install playlist-bridge        # or: pip install playlist-bridge
 ```
+
+From source (for development): `pip install -e ".[dev]"`.
 
 ### Configure Spotify credentials
 
@@ -96,11 +100,8 @@ pip install -e ".[dev]"
 2. Copy its **Client ID** and **Client Secret**.
 3. Add a Redirect URI in the app settings that matches what you'll use
    locally, e.g. `http://127.0.0.1:8888/callback`.
-4. Copy `.env.example` to `.env` and fill in the three values:
-
-   ```bash
-   cp .env.example .env
-   ```
+4. Create a `.env` file in the folder you'll run the command from (or export the
+   variables in your shell) with the three values:
 
    ```
    SPOTIPY_CLIENT_ID=your-client-id
@@ -108,9 +109,16 @@ pip install -e ".[dev]"
    SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
    ```
 
-### Get the input file
+Each user brings their own Spotify app. That keeps every run inside your own app's
+development-mode quota instead of a shared one.
 
-Open your YouTube Music playlist or library page in a browser, select all
+### Pick a source
+
+**Option A: a public playlist URL (recommended).** Copy the playlist's share link from
+YouTube Music or YouTube — no YouTube login or copy-paste needed. Private playlists and
+your Liked Music aren't reachable this way; use option B for those.
+
+**Option B: a page dump.** Open your YouTube Music playlist or library page in a browser, select all
 (Ctrl+A / Cmd+A), copy, and paste the result into `ytmusic_paste.txt` in the
 project root (or any path you pass to `--input`).
 
@@ -125,9 +133,12 @@ project root (or any path you pass to `--input`).
 
 ```bash
 # Report what would happen, without touching Spotify or checkpoint state
-playlist-bridge --input ytmusic_paste.txt --dry-run
+playlist-bridge --playlist "https://music.youtube.com/playlist?list=PL..." --dry-run
 
 # Actually migrate
+playlist-bridge --playlist "https://music.youtube.com/playlist?list=PL..."
+
+# Or from a page dump
 playlist-bridge --input ytmusic_paste.txt
 ```
 
@@ -136,17 +147,24 @@ is checkpointed to `processed_tracks.json`, so an interrupted run can simply
 be re-run — already-migrated tracks are skipped. Suspiciously long entries
 (over 10 minutes) are written to `suspicious_tracks.txt` for manual review.
 
-### Run the tests
+### Run the checks
 
 ```bash
-pytest -v
+ruff check . && mypy playlist_bridge && pytest -v
 ```
+
+### Releasing
+
+Bump `version` in `pyproject.toml`, then push a matching tag (`git tag v0.2.0 && git push --tags`).
+`.github/workflows/publish.yml` builds and uploads to PyPI via trusted publishing (no token
+stored in the repo); it refuses to publish if the tag and the package version differ.
 
 ## Tech Stack
 
 - **Python** 3.10+
 - **[spotipy](https://spotipy.readthedocs.io/)** — Spotify Web API client and OAuth
 - **[rapidfuzz](https://github.com/rapidfuzz/RapidFuzz)** — fuzzy string matching for track scoring
+- **[ytmusicapi](https://github.com/sigma67/ytmusicapi)** — reading public YouTube Music playlists (unofficial API)
 - **[python-dotenv](https://github.com/theskumar/python-dotenv)** — loading Spotify credentials from `.env`
 - **[pytest](https://docs.pytest.org/)** — test suite
 
@@ -154,10 +172,9 @@ pytest -v
 
 The platform-agnostic model design leaves room to grow in a few directions:
 
-* **A real YouTube Music API integration.** The parser currently works on
-  a manually copy-pasted text dump, since there's no official YouTube
-  Music API for playlist export. Swapping in an unofficial client (e.g.
-  `ytmusicapi`) would remove the copy-paste step entirely.
+* **Private playlists and Liked Music.** Public playlists are read via
+  `ytmusicapi` without login; private ones still need the page-dump path.
+  `ytmusicapi`'s browser-auth mode could cover them.
 * **Reverse migration (Spotify → YouTube Music).** The shared model types
   were designed with this in mind — it would mainly require a YouTube
   Music *write* client alongside the existing Spotify one.
